@@ -66,8 +66,9 @@ func main() {
 }
 
 // Job does a download of an index page from a domain and measures its size and duration of the download.
-func (d download) Job(ctx context.Context) {
-	ctx, _ = context.WithTimeout(ctx, d.timeout)
+func (d download) Job(cx context.Context) {
+	ctx, cancel := context.WithTimeout(cx, d.timeout)
+	defer cancel()
 
 	start := time.Now()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.url, nil)
