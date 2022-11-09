@@ -34,7 +34,7 @@ go build
 ### Run manual tests
 
    ```
-   $ ./worker-pool -t 10 -w 30 < top111.txt 
+   $ ./domain-crawler -t 10 -w 30 < top111.txt 
    processing started with 30 workers
    success: https://github.com, size 309937, duration 280.099034ms
    success: https://google.com, size 15075, duration 439.817687ms

@@ -5,8 +5,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -15,8 +16,9 @@ import (
 )
 
 const (
-	NumWorkers  = 10
-	HTTPTimeout = 10
+	NumWorkers    = 10
+	HTTPTimeout   = 10
+	DefaultScheme = "https"
 )
 
 // summary keeps statistic values about the download.
@@ -36,20 +38,30 @@ type download struct {
 
 func main() {
 	num := flag.Int("w", NumWorkers, "Number of workers.")
-	timeout := flag.Int("t", HTTPTimeout, "HTTP timeout.")
+	timeout := flag.Int("t", HTTPTimeout, "HTTP timeout in seconds.")
 	flag.Parse()
 
-	workers := pool.New(*num)
-	workers.Run(context.Background())
-	fmt.Printf("processing started with %d workers\n", *num)
+	total := measureDomainResponse(os.Stdin, DefaultScheme, *num, *timeout)
 
-	total := summary{}
-	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Printf("\ndownloaded %.2d files, average %.2d bytes, %v\n",
+		total.num,
+		total.volume/total.num,
+		total.duration/time.Duration(total.num),
+	)
+}
+
+func measureDomainResponse(input io.Reader, defaultScheme string, numWorkers int, timeoutSec int) *summary {
+	workers := pool.New(numWorkers)
+	workers.Run(context.Background())
+	fmt.Printf("processing started with %d workers\n", numWorkers)
+
+	total := &summary{}
+	scanner := bufio.NewScanner(input)
 	for scanner.Scan() {
 		workers.Execute(download{
-			url:     fmt.Sprintf("https://%s", scanner.Text()),
-			timeout: time.Duration(*timeout) * time.Second,
-			total:   &total,
+			url:     addScheme(scanner.Text(), defaultScheme),
+			timeout: time.Duration(timeoutSec) * time.Second,
+			total:   total,
 		})
 	}
 
@@ -58,11 +70,16 @@ func main() {
 	}
 	workers.Stop()
 
-	fmt.Printf("\ndownloaded %.2d files, average %.2d bytes, %v\n",
-		total.num,
-		total.volume/total.num,
-		total.duration/time.Duration(total.num),
-	)
+	return total
+}
+
+func addScheme(s, scheme string) string {
+	u, err := url.Parse(s)
+	if err == nil && len(u.Scheme) == 0 {
+		return fmt.Sprintf("%s://%s", scheme, s)
+	}
+
+	return s
 }
 
 // Job does a download of an index page from a domain and measures its size and duration of the download.
@@ -92,7 +109,7 @@ func (d download) Job(cx context.Context) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("error: reading %s: %v\n", d.url, err)
 		return
