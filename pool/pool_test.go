@@ -2,11 +2,14 @@ package pool_test
 
 import (
 	"context"
+	"math/rand"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/illyasch/worker-pool/pool"
-	"github.com/stretchr/testify/assert"
 )
 
 type counter struct {
@@ -23,6 +26,8 @@ func (a *add) Job(context.Context) {
 	a.cnt.mu.Lock()
 	a.cnt.value++
 	a.cnt.mu.Unlock()
+
+	time.Sleep(time.Duration(rand.Intn(10000)) * time.Microsecond)
 	a.wg.Done()
 }
 
