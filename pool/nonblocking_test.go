@@ -64,4 +64,28 @@ func TestNonBlocking_Run(t *testing.T) {
 
 		assert.Equal(t, executed, cnt.value)
 	})
+
+	t.Run("Workers blocking", func(t *testing.T) {
+		const total = 33
+
+		workers := pool.NewNonBlocking[string](10)
+		workers.Run(context.Background())
+
+		received := 0
+		requests := workers.RequestChan()
+
+		for i := 0; i < total; i++ {
+			select {
+			case req := <-requests:
+				t.Logf("worker %d received\n", i)
+				received++
+				req.Close()
+
+			case <-time.After(100 * time.Millisecond):
+				t.Logf("worker %d missed\n", i)
+			}
+		}
+
+		assert.Equal(t, total, received)
+	})
 }

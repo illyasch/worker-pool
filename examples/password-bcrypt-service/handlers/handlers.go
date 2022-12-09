@@ -95,6 +95,8 @@ func (cfg APIConfig) scheduleBcrypt(pwd string) (string, error) {
 	select {
 	// Retrieves a first free worker for a task execution.
 	case req := <-requests:
+		// Closes the channels bound to the worker to avoid blocking.
+		defer req.Close()
 		select {
 		// Sends a task to the worker then worker starts the task execution.
 		case req.Request <- task:

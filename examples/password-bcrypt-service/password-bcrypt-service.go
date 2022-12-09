@@ -30,7 +30,7 @@ type config struct {
 }
 
 func main() {
-	l := log.New(os.Stdout, configPrefix, log.LstdFlags)
+	l := log.New(os.Stdout, configPrefix+": ", log.LstdFlags)
 
 	if err := run(l); err != nil {
 		l.Fatal("startup", "ERROR", err)
